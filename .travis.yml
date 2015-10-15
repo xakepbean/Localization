@@ -9,6 +9,7 @@ addons:
     - debian-sid
     packages:
     - libunwind8
+osx_image: xcode7 
 install:
   - curl -sSL https://github.com/libuv/libuv/archive/v1.4.2.tar.gz | tar zxfv - -C /tmp && cd /tmp/libuv-1.4.2/
   - sh autogen.sh
@@ -17,5 +18,7 @@ install:
   - make install
   - export LD_LIBRARY_PATH="$HOME/libuvinstall/lib"
   - cd $OLDPWD
+env: 
+ - DNX_TRACE=1
 script:
   - ./build.sh --quiet verify
