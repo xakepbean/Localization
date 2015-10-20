@@ -1,5 +1,5 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved. 
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Testing;
@@ -49,6 +49,25 @@ namespace Microsoft.AspNet.Localization.FunctionalTests
                 "Bonjour from StartupResourcesInFolder Bonjour from Test in resources folder");
         }
 
+        //[ConditionalTheory]
+        //[OSSkipCondition(OperatingSystems.Windows)]
+        //[OSSkipCondition(OperatingSystems.Linux)]
+        //[InlineData(RuntimeFlavor.CoreClr, "http://localhost:5073/", RuntimeArchitecture.x64)]
+        //public Task Localization_ResourcesInFolder_ReturnLocalizedValue_Coreclr(
+        //    RuntimeFlavor runtimeFlavor,
+        //    string applicationBaseUrl,
+        //    RuntimeArchitecture runtimeArchitechture)
+        //{
+        //    var testRunner = new TestRunner();
+        //    return testRunner.RunTestAndVerifyResponse(
+        //        runtimeFlavor,
+        //        runtimeArchitechture,
+        //        applicationBaseUrl,
+        //        "ResourcesInFolder",
+        //        "fr-FR",
+        //        "Bonjour from StartupResourcesInFolder Bonjour from Test in resources folder");
+        //}
+
         [ConditionalTheory]
         [OSSkipCondition(OperatingSystems.Linux)]
         [OSSkipCondition(OperatingSystems.MacOSX)]
@@ -87,5 +106,24 @@ namespace Microsoft.AspNet.Localization.FunctionalTests
                 "fr-FR",
                 "Bonjour from StartupResourcesAtRootFolder Bonjour from Test in root folder");
         }
+
+        //[ConditionalTheory]
+        //[OSSkipCondition(OperatingSystems.Windows)]
+        //[OSSkipCondition(OperatingSystems.Linux)]
+        //[InlineData(RuntimeFlavor.CoreClr, "http://localhost:5077/", RuntimeArchitecture.x64)]
+        //public Task Localization_ResourcesAtRootFolder_ReturnLocalizedValue_Coreclr(
+        //    RuntimeFlavor runtimeFlavor,
+        //    string applicationBaseUrl,
+        //    RuntimeArchitecture runtimeArchitechture)
+        //{
+        //    var testRunner = new TestRunner();
+        //    return testRunner.RunTestAndVerifyResponse(
+        //        runtimeFlavor,
+        //        runtimeArchitechture,
+        //        applicationBaseUrl,
+        //        "ResourcesAtRootFolder",
+        //        "fr-FR",
+        //        "Bonjour from StartupResourcesAtRootFolder Bonjour from Test in root folder");
+        //}
     }
 }

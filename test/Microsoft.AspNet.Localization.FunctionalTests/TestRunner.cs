@@ -1,5 +1,5 @@
-﻿// Copyright (c) .NET Foundation. All rights reserved. 
-// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
+﻿// Copyright (c) .NET Foundation. All rights reserved.
+// Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
 using System.IO;
@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNet.Server.Testing;
+using Microsoft.AspNet.Testing;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
@@ -28,10 +29,15 @@ namespace Microsoft.AspNet.Localization.FunctionalTests
 
             using (logger.BeginScope("LocalizationTest"))
             {
+                //var command = "web";
+                //if (TestPlatformHelper.IsLinux)
+                //{
+                //    command = "kestrel";
+                //}
                 var deploymentParameters = new DeploymentParameters(GetApplicationPath(), ServerType.Kestrel, runtimeFlavor, runtimeArchitechture)
                 {
                     ApplicationBaseUriHint = applicationBaseUrl,
-                    Command = "web",
+                    //Command = command,
                     EnvironmentName = environmentName
                 };
 
