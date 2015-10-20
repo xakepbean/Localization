@@ -23,8 +23,8 @@ namespace Microsoft.AspNet.Localization.FunctionalTests
             string locale,
             string expectedText)
         {
-            var logger = new LoggerFactory()
-                            .AddConsole()
+            var logger = new LoggerFactory() { MinimumLevel = LogLevel.Verbose }
+                            .AddConsole(LogLevel.Verbose)
                             .CreateLogger(string.Format("Localization Test Site:{0}:{1}:{2}", ServerType.Kestrel, runtimeFlavor, runtimeArchitechture));
 
             using (logger.BeginScope("LocalizationTest"))
