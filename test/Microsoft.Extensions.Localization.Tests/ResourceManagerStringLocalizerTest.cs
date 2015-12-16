@@ -59,31 +59,8 @@ namespace Microsoft.Extensions.Localization.Tests
             Assert.Equal(expectedCallCount, resourceAssembly2.GetManifestResourceStreamCallCount);
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void ResourceManagerStringLocalizer_GetAllStrings_ReturnsExpectedValue(bool includeParentCultures)
-        {
-            // Arrange
-            var baseName = "test";
-            var resourceNamesCache = new ResourceNamesCache();
-            var resourceAssembly = new TestAssemblyWrapper();
-            var resourceManager = new TestResourceManager(baseName, resourceAssembly.Assembly);
-            var localizer = new ResourceManagerStringLocalizer(resourceManager, resourceAssembly, baseName, resourceNamesCache);
-
-            // Act
-            // We have to access the result so it evaluates.
-            var strings = localizer.GetAllStrings(includeParentCultures).ToList();
-
-            // Assert
-            var value = Assert.Single(strings);
-            Assert.Equal("TestName", value.Value);
-        }
-
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void ResourceManagerStringLocalizer_GetAllStrings_MissingResourceThrows(bool includeParentCultures)
+        [Fact]
+        public void ResourceManagerStringLocalizer_GetAllStrings_MissingResourceDoesntThrow()
         {
             // Arrange
             var resourceNamesCache = new ResourceNamesCache();
@@ -97,16 +74,12 @@ namespace Microsoft.Extensions.Localization.Tests
                 resourceNamesCache,
                 CultureInfo.CurrentCulture);
 
-            // Act & Assert
-            var exception = Assert.Throws<MissingManifestResourceException>(() =>
-            {
-                // We have to access the result so it evaluates.
-                localizer.GetAllStrings(includeParentCultures).ToArray();
-            });
-            var expected = includeParentCultures
-                ? "No manifests exist for the current culture."
-                : $"The manifest 'testington.{CultureInfo.CurrentCulture}.resources' was not found.";
-            Assert.Equal(expected, exception.Message);
+            // Act
+            var t = localizer.GetAllStrings(true);
+
+            // Assert
+            // We're really just checking that when it didn't find the non-existent resource it doesn't error out.
+            Assert.Equal(0, t.Count());
         }
 
         private static Stream MakeResourceStream()
