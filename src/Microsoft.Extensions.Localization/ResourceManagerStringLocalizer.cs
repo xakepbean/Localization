@@ -261,7 +261,8 @@ namespace Microsoft.Extensions.Localization
                 {
                     if (cultureResourceStream == null)
                     {
-                        return null;
+                        throw new MissingManifestResourceException(
+                            string.Format(Resources.Localization_MissingManifest_Parent, resourceStreamName));
                     }
 
                     using (var resources = new ResourceReader(cultureResourceStream))

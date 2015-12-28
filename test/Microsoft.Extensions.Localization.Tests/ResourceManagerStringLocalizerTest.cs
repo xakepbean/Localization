@@ -59,8 +59,10 @@ namespace Microsoft.Extensions.Localization.Tests
             Assert.Equal(expectedCallCount, resourceAssembly2.GetManifestResourceStreamCallCount);
         }
 
-        [Fact]
-        public void ResourceManagerStringLocalizer_GetAllStrings_MissingResourceDoesntThrow()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void ResourceManagerStringLocalizer_GetAllStrings_MissingResourceThrows(bool includeParentCultures)
         {
             // Arrange
             var resourceNamesCache = new ResourceNamesCache();
@@ -74,12 +76,12 @@ namespace Microsoft.Extensions.Localization.Tests
                 resourceNamesCache,
                 CultureInfo.CurrentCulture);
 
-            // Act
-            var t = localizer.GetAllStrings(true);
-
-            // Assert
-            // We're really just checking that when it didn't find the non-existent resource it doesn't error out.
-            Assert.Equal(0, t.Count());
+            // Act & Assert
+            Assert.Throws<MissingManifestResourceException>(() =>
+            {
+                //We have to access the result so it evaluates.
+                localizer.GetAllStrings(includeParentCultures).Count();
+            });
         }
 
         private static Stream MakeResourceStream()
