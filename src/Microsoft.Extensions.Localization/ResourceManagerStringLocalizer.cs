@@ -231,7 +231,7 @@ namespace Microsoft.Extensions.Localization
 
             if (!hasAnyCultures)
             {
-                throw new MissingManifestResourceException(Resources.Localization_MissingManifest_Parent);
+                throw new MissingManifestResourceException(Resources.FormatLocalization_MissingManifest_Parent());
             }
 
             return resourceNames;

@@ -62,9 +62,9 @@ namespace Microsoft.Extensions.Localization.Tests
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
-        public void ResourceManagerStringLocalizer_GetAllStrings_ExistingResourceDoesntThrow(bool includeParentCultures)
+        public void ResourceManagerStringLocalizer_GetAllStrings_ReturnsExpectedValue(bool includeParentCultures)
         {
-            // Arrange var resourceNamesCache = new ResourceNamesCache();
+            // Arrange
             var baseName = "test";
             var resourceNamesCache = new ResourceNamesCache();
             var resourceAssembly = new TestAssemblyWrapper();
@@ -76,7 +76,8 @@ namespace Microsoft.Extensions.Localization.Tests
             var strings = localizer.GetAllStrings(includeParentCultures).ToList();
 
             // Assert
-            Assert.Equal(1, strings.Count());
+            var value = Assert.Single(strings);
+            Assert.Equal("TestName", value.Value);
         }
 
         [Theory]
