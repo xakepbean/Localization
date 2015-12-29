@@ -79,8 +79,8 @@ namespace Microsoft.Extensions.Localization.Tests
             // Act & Assert
             Assert.Throws<MissingManifestResourceException>(() =>
             {
-                //We have to access the result so it evaluates.
-                localizer.GetAllStrings(includeParentCultures).Count();
+                // We have to access the result so it evaluates.
+                localizer.GetAllStrings(includeParentCultures).ToArray();
             });
         }
 
