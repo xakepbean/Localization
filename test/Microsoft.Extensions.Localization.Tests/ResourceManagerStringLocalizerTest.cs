@@ -97,11 +97,15 @@ namespace Microsoft.Extensions.Localization.Tests
                 CultureInfo.CurrentCulture);
 
             // Act & Assert
-            Assert.Throws<MissingManifestResourceException>(() =>
+            var exception = Assert.Throws<MissingManifestResourceException>(() =>
             {
                 // We have to access the result so it evaluates.
                 localizer.GetAllStrings(includeParentCultures).ToArray();
             });
+            var expected = includeParentCultures
+                ? "No manifests exist for the current culture."
+                : "The manifest 'testington.en-US.resources' was not found.";
+            Assert.Equal(expected, exception.Message);
         }
 
         private static Stream MakeResourceStream()
