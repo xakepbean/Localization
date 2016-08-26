@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information. 
 
 using System;
+using System.Globalization;
 
 namespace Microsoft.Extensions.Localization
 {
@@ -25,5 +26,7 @@ namespace Microsoft.Extensions.Localization
         /// <param name="location">The location to load resources from.</param>
         /// <returns>The <see cref="IStringLocalizer"/>.</returns>
         IStringLocalizer Create(string baseName, string location);
+
+        bool RemoveFileCache(CultureInfo culture=null, string resourceFileName = null);
     }
 }

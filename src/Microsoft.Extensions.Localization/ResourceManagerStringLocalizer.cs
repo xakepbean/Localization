@@ -8,6 +8,9 @@ using System.Globalization;
 using System.Reflection;
 using System.Resources;
 using Microsoft.Extensions.Localization.Internal;
+using Microsoft.Extensions.FileProviders;
+using System.Xml.Linq;
+using System.Linq;
 
 namespace Microsoft.Extensions.Localization
 {
@@ -23,6 +26,13 @@ namespace Microsoft.Extensions.Localization
         private readonly ResourceManager _resourceManager;
         private readonly IResourceStringProvider _resourceStringProvider;
         private readonly string _resourceBaseName;
+        private readonly string _resourcePath;
+        private readonly IFileProvider _fileProvider;
+
+        protected internal List<string> CultureCache { get; set; }
+        protected internal string PathName { get; set; }
+
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _fileResourceCache=new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
 
         /// <summary>
         /// Creates a new <see cref="ResourceManagerStringLocalizer"/>.
@@ -31,11 +41,14 @@ namespace Microsoft.Extensions.Localization
         /// <param name="resourceAssembly">The <see cref="Assembly"/> that contains the strings as embedded resources.</param>
         /// <param name="baseName">The base name of the embedded resource that contains the strings.</param>
         /// <param name="resourceNamesCache">Cache of the list of strings for a given resource assembly name.</param>
+        /// <param name="fileProvider"></param>
+        /// <param name="resourcePath"></param>
+        /// <param name="pathName">´æ´¢Â·¾¶</param>
         public ResourceManagerStringLocalizer(
             ResourceManager resourceManager,
             Assembly resourceAssembly,
             string baseName,
-            IResourceNamesCache resourceNamesCache)
+            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider, string resourcePath, string pathName)
             : this(
                   resourceManager,
                   new AssemblyResourceStringProvider(
@@ -43,7 +56,10 @@ namespace Microsoft.Extensions.Localization
                       new AssemblyWrapper(resourceAssembly),
                       baseName),
                   baseName,
-                  resourceNamesCache)
+                  resourceNamesCache,
+                  fileProvider,
+                  resourcePath,
+                  pathName)
         {
             if (resourceAssembly == null)
             {
@@ -58,7 +74,7 @@ namespace Microsoft.Extensions.Localization
             ResourceManager resourceManager,
             IResourceStringProvider resourceStringProvider,
             string baseName,
-            IResourceNamesCache resourceNamesCache)
+            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider,string resourcePath, string pathName)
         {
             if (resourceManager == null)
             {
@@ -79,11 +95,16 @@ namespace Microsoft.Extensions.Localization
             {
                 throw new ArgumentNullException(nameof(resourceNamesCache));
             }
-
+            
+            _fileProvider = fileProvider;
+            _resourcePath = resourcePath;
+            PathName = pathName;
+           
             _resourceStringProvider = resourceStringProvider;
             _resourceManager = resourceManager;
             _resourceBaseName = baseName;
             _resourceNamesCache = resourceNamesCache;
+            CultureCache = new List<string>();
         }
 
         /// <inheritdoc />
@@ -129,13 +150,19 @@ namespace Microsoft.Extensions.Localization
                     _resourceManager,
                     _resourceStringProvider,
                     _resourceBaseName,
-                    _resourceNamesCache)
+                    _resourceNamesCache,
+                    _fileProvider,
+                    _resourcePath,
+                    PathName)
                 : new ResourceManagerWithCultureStringLocalizer(
                     _resourceManager,
                     _resourceStringProvider,
                     _resourceBaseName,
                     _resourceNamesCache,
-                    culture);
+                    culture, 
+                    _fileProvider,
+                    _resourcePath,
+                    PathName);
         }
 
         /// <inheritdoc />
@@ -179,8 +206,8 @@ namespace Microsoft.Extensions.Localization
             {
                 throw new ArgumentNullException(nameof(name));
             }
-
-            var cacheKey = $"name={name}&culture={(culture ?? CultureInfo.CurrentUICulture).Name}";
+            var cultureName = (culture ?? CultureInfo.CurrentUICulture).Name;
+            var cacheKey = $"name={name}&culture={cultureName}";
 
             if (_missingManifestCache.ContainsKey(cacheKey))
             {
@@ -189,7 +216,43 @@ namespace Microsoft.Extensions.Localization
 
             try
             {
-                return culture == null ? _resourceManager.GetString(name) : _resourceManager.GetString(name, culture);
+                var fileCacheKey= $"culture={cultureName}";//CultureCache
+                if (!_missingManifestCache.ContainsKey(fileCacheKey))
+                {
+                    if (_fileResourceCache.ContainsKey(fileCacheKey))
+                    {
+                        if (_fileResourceCache[fileCacheKey].ContainsKey(name))
+                        {
+                            return _fileResourceCache[fileCacheKey][name];
+                        }
+                    }
+                    else
+                    {
+                        if (!CultureCache.Contains(cultureName))
+                            CultureCache.Add(cultureName);
+                        string fileSubPath = $"{_resourcePath}{PathName.Replace('.','/')}.{cultureName}.resx";
+                        
+                        ConcurrentDictionary<string, string> _cultureResourceCache = GetFileResource(fileSubPath);
+                        if(_cultureResourceCache==null)
+                        {
+                            fileSubPath = $"{_resourcePath}{PathName}.{cultureName}.resx";
+                            _cultureResourceCache = GetFileResource(fileSubPath);
+                        }
+                        if (_cultureResourceCache == null)
+                        {
+                            _missingManifestCache.TryAdd(fileCacheKey, null);
+                        }
+                        else
+                        {
+                            _fileResourceCache.TryAdd(fileCacheKey, _cultureResourceCache);
+                            if (_cultureResourceCache.ContainsKey(name))
+                            {
+                                return _cultureResourceCache[name];
+                            }
+                        }
+                    }
+                }
+                return culture == null ?  _resourceManager.GetString(name) : _resourceManager.GetString(name, culture);
             }
             catch (MissingManifestResourceException)
             {
@@ -197,6 +260,44 @@ namespace Microsoft.Extensions.Localization
                 return null;
             }
         }
+
+        private ConcurrentDictionary<string, string> GetFileResource(string subPath)
+        {
+            ConcurrentDictionary<string, string> _cultureResourceCache = null;
+            var vFileInfo = _fileProvider.GetFileInfo(subPath);
+            if (vFileInfo.Exists)
+            {
+                var stream = vFileInfo.CreateReadStream();
+                XElement XRoot = XElement.Load(stream);
+                var rData = XRoot.Elements("data").Where(w => w.Attribute("name") != null && w.Element("value") != null);
+                if (rData.Count() > 0)
+                {
+                    _cultureResourceCache= new ConcurrentDictionary<string, string>();
+                    foreach (var item in rData)
+                    {
+                        _cultureResourceCache.TryAdd(item.Attribute("name").Value, item.Element("value").Value);
+                    }
+                }
+            }
+            return _cultureResourceCache;
+        }
+
+        protected internal void RemoveFileCache(CultureInfo culture)
+        {
+            var cultureName = (culture ?? CultureInfo.CurrentUICulture).Name;
+            var fileCacheKey = $"culture={cultureName}";
+            if (_fileResourceCache.ContainsKey(fileCacheKey))
+            {
+                ConcurrentDictionary<string, string> outCache;
+                _fileResourceCache.TryRemove(fileCacheKey, out outCache);
+            }
+            if (_missingManifestCache.ContainsKey(fileCacheKey))
+            {
+                object outobject;
+                _missingManifestCache.TryRemove(fileCacheKey, out outobject);
+            }
+        }
+
 
         private IEnumerable<string> GetResourceNamesFromCultureHierarchy(CultureInfo startingCulture)
         {

@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Resources;
 using Microsoft.Extensions.Localization.Internal;
+using Microsoft.Extensions.FileProviders;
 
 namespace Microsoft.Extensions.Localization
 {
@@ -26,13 +27,16 @@ namespace Microsoft.Extensions.Localization
         /// <param name="baseName">The base name of the embedded resource that contains the strings.</param>
         /// <param name="resourceNamesCache">Cache of the list of strings for a given resource assembly name.</param>
         /// <param name="culture">The specific <see cref="CultureInfo"/> to use.</param>
+        /// <param name="fileProvider"></param>
+        /// <param name="resourcePath"></param>
+        /// <param name="pathName"></param>
         internal ResourceManagerWithCultureStringLocalizer(
             ResourceManager resourceManager,
             IResourceStringProvider resourceStringProvider,
             string baseName,
             IResourceNamesCache resourceNamesCache,
-            CultureInfo culture)
-            : base(resourceManager, resourceStringProvider, baseName, resourceNamesCache)
+            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName)
+            : base(resourceManager, resourceStringProvider, baseName, resourceNamesCache, fileProvider, resourcePath,pathName)
         {
             if (resourceManager == null)
             {
@@ -70,13 +74,16 @@ namespace Microsoft.Extensions.Localization
         /// <param name="baseName">The base name of the embedded resource that contains the strings.</param>
         /// <param name="resourceNamesCache">Cache of the list of strings for a given resource assembly name.</param>
         /// <param name="culture">The specific <see cref="CultureInfo"/> to use.</param>
+        /// <param name="fileProvider"></param>
+        /// <param name="resourcePath"></param>
+        /// <param name="pathName"></param>
         public ResourceManagerWithCultureStringLocalizer(
             ResourceManager resourceManager,
             Assembly resourceAssembly,
             string baseName,
             IResourceNamesCache resourceNamesCache,
-            CultureInfo culture)
-            : base(resourceManager, resourceAssembly, baseName, resourceNamesCache)
+            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName)
+            : base(resourceManager, resourceAssembly, baseName, resourceNamesCache, fileProvider, resourcePath,pathName)
         {
             if (resourceManager == null)
             {

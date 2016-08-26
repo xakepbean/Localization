@@ -1,0 +1,27 @@
+﻿@model ResxFileSample.Models.Person
+@{
+    ViewBag.Title = "Add";
+}
+<h2>Add</h2>
+@using (Html.BeginForm())
+{
+    <h4>First Person</h4>
+    @:FirstName:@Html.TextBox("[0].FirstName") &nbsp;
+    @:LastName:@Html.TextBox("[0].LastName")
+
+
+    <h4>Second Person</h4>
+    @:FirstName:@Html.TextBox("[1].FirstName") &nbsp;
+    @:LastName:@Html.TextBox("[1].LastName")
+
+
+    <h3>movies:</h3>
+    @:1:@Html.TextBox("movies")<br />
+    @:2:@Html.TextBox("movies")<br />
+    @:3:@Html.TextBox("movies")<br />
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" value="Create" class="btn btn-default" />
+        </div>
+    </div>
+}

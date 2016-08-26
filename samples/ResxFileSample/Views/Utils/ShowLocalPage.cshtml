@@ -1,0 +1,9 @@
+@using Microsoft.AspNetCore.Mvc.Localization;
+@inject IViewLocalizer Localizer
+
+@{
+    ViewData["Title"] = "国际化";
+}
+<div>
+    @(Localizer["Hello"])
+</div>

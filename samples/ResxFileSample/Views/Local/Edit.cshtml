@@ -1,0 +1,49 @@
+﻿@model List<ResxFileSample.Models.ResouresEditModel>
+@{
+    ViewData["Title"] = "国际语言编辑";
+}
+<link href="~/lib/zTree/zTreeStyle.css" rel="stylesheet" />
+<script src="~/lib/zTree/jquery.ztree.all.min.js"></script>
+@*<script type="text/javascript">
+    $(document).ready(function () {
+        var setting={};
+        var zNodes=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+        $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+
+
+
+    });
+    </script>*@
+<ul id="treeDemo" class="ztree"></ul>
+<form asp-action="Edit">
+    <table width="100%">
+        <thead>
+            <tr>
+                <td>
+                    OldValue
+                </td>
+                <td>
+                    NewValue
+                </td>
+            </tr>
+        </thead>
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            <tr>
+                <td colspan="2">
+                    @Html.DisplayFor(modelItem => Model[i].Name)
+                    @Html.HiddenFor(modelItem => Model[i].Name)
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    @Html.TextBoxFor(modelItem => Model[i].OldValue, new { @readonly = "readonly" })
+                </td>
+                <td>
+                    @Html.TextBoxFor(modelItem => Model[i].NewValue)
+                </td>
+            </tr>
+        }
+    </table>
+    <input type="submit" id="btnSubmit" value="保存" />
+</form>

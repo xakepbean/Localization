@@ -25,11 +25,17 @@
     "Microsoft.Extensions.Options": "1.1.0-*"
   },
   "frameworks": {
-    "net451": {},
+    "net451": {
+      "frameworkAssemblies": {
+        "System.Xml": "4.0.0.0",
+        "System.Xml.Linq": "4.0.0.0"
+      }
+    },
     "netstandard1.3": {
       "dependencies": {
         "System.Collections.Concurrent": "4.0.12-*",
-        "System.Resources.Reader": "4.0.0-*"
+        "System.Resources.Reader": "4.0.0-*",
+        "System.Xml.XDocument": "4.0.*"
       }
     }
   }

@@ -8,6 +8,9 @@ using System.Reflection;
 using System.Resources;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.FileProviders;
+using System.Linq;
+using System.Globalization;
 
 namespace Microsoft.Extensions.Localization
 {
@@ -21,6 +24,8 @@ namespace Microsoft.Extensions.Localization
             new ConcurrentDictionary<string, ResourceManagerStringLocalizer>();
         private readonly IHostingEnvironment _hostingEnvironment;
         private readonly string _resourcesRelativePath;
+        private readonly string _ResourcePath;
+        private readonly IFileProvider _fileProvider;
 
         /// <summary>
         /// Creates a new <see cref="ResourceManagerStringLocalizer"/>.
@@ -40,11 +45,14 @@ namespace Microsoft.Extensions.Localization
             {
                 throw new ArgumentNullException(nameof(localizationOptions));
             }
-
+      
+            _ResourcePath = "/";
             _hostingEnvironment = hostingEnvironment;
             _resourcesRelativePath = localizationOptions.Value.ResourcesPath ?? string.Empty;
+            _fileProvider = localizationOptions.Value.FileProvider ?? _hostingEnvironment.ContentRootFileProvider;
             if (!string.IsNullOrEmpty(_resourcesRelativePath))
             {
+                _ResourcePath += _resourcesRelativePath.TrimEnd(Path.AltDirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar) + "/";
                 _resourcesRelativePath = _resourcesRelativePath.Replace(Path.AltDirectorySeparatorChar, '.')
                     .Replace(Path.DirectorySeparatorChar, '.') + ".";
             }
@@ -66,18 +74,21 @@ namespace Microsoft.Extensions.Localization
             var typeInfo = resourceSource.GetTypeInfo();
             var assembly = typeInfo.Assembly;
 
+            string pathName = TrimPrefix(typeInfo.FullName, _hostingEnvironment.ApplicationName + ".");
             // Re-root the base name if a resources path is set
             var baseName = string.IsNullOrEmpty(_resourcesRelativePath)
                 ? typeInfo.FullName
-                : _hostingEnvironment.ApplicationName + "." + _resourcesRelativePath
-                    + TrimPrefix(typeInfo.FullName, _hostingEnvironment.ApplicationName + ".");
+                : _hostingEnvironment.ApplicationName + "." + _resourcesRelativePath + pathName;
 
             return _localizerCache.GetOrAdd(baseName, _ =>
                 new ResourceManagerStringLocalizer(
                     new ResourceManager(baseName, assembly),
                     assembly,
                     baseName,
-                    _resourceNamesCache)
+                    _resourceNamesCache,
+                    _fileProvider,
+                    _ResourcePath,
+                    pathName)
             );
         }
 
@@ -95,9 +106,8 @@ namespace Microsoft.Extensions.Localization
             }
 
             location = location ?? _hostingEnvironment.ApplicationName;
-
-            baseName = location + "." + _resourcesRelativePath + TrimPrefix(baseName, location + ".");
-
+            string pathName = TrimPrefix(baseName, location + ".");
+            baseName = location + "." + _resourcesRelativePath + pathName;
             return _localizerCache.GetOrAdd($"B={baseName},L={location}", _ =>
             {
                 var assembly = Assembly.Load(new AssemblyName(location));
@@ -105,7 +115,7 @@ namespace Microsoft.Extensions.Localization
                     new ResourceManager(baseName, assembly),
                     assembly,
                     baseName,
-                    _resourceNamesCache);
+                    _resourceNamesCache, _fileProvider, _ResourcePath, pathName);
             });
         }
 
@@ -117,6 +127,29 @@ namespace Microsoft.Extensions.Localization
             }
 
             return name;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="Culture"></param>
+        /// <param name="PathName"></param>
+        /// <returns></returns>
+        public bool RemoveFileCache(CultureInfo Culture = null, string PathName = null)
+        {
+            Culture = Culture ?? CultureInfo.CurrentUICulture;
+            var vIString = _localizerCache.Where(w => w.Value.CultureCache.Contains(Culture.Name)
+               && (PathName == null || (PathName != null && w.Value.PathName == PathName)));
+            if (vIString.Count() > 0)
+            {
+                var vKey = vIString.Select(w => w.Key).ToList();
+                foreach (var item in vKey)
+                {
+                    _localizerCache[item].RemoveFileCache(Culture);
+                }
+                return true;
+            }
+            return false;
         }
     }
 }
