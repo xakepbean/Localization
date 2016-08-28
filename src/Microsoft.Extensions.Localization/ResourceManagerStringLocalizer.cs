@@ -30,7 +30,7 @@ namespace Microsoft.Extensions.Localization
         private readonly string _resourcePath;
         private readonly IFileProvider _fileProvider;
 
-        protected internal List<string> CultureFileCache { get; set; }
+        private readonly bool _EnabledFiles = false;
         protected internal string PathName { get; set; }
 
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _fileResourceCache=new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
@@ -45,11 +45,12 @@ namespace Microsoft.Extensions.Localization
         /// <param name="fileProvider"></param>
         /// <param name="resourcePath"></param>
         /// <param name="pathName">´æ´¢Â·¾¶</param>
+        /// <param name="EnabledFiles"></param>
         public ResourceManagerStringLocalizer(
             ResourceManager resourceManager,
             Assembly resourceAssembly,
             string baseName,
-            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider, string resourcePath, string pathName)
+            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider, string resourcePath, string pathName, bool EnabledFiles)
             : this(
                   resourceManager,
                   new AssemblyResourceStringProvider(
@@ -60,7 +61,7 @@ namespace Microsoft.Extensions.Localization
                   resourceNamesCache,
                   fileProvider,
                   resourcePath,
-                  pathName)
+                  pathName,EnabledFiles)
         {
             if (resourceAssembly == null)
             {
@@ -75,7 +76,7 @@ namespace Microsoft.Extensions.Localization
             ResourceManager resourceManager,
             IResourceStringProvider resourceStringProvider,
             string baseName,
-            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider,string resourcePath, string pathName)
+            IResourceNamesCache resourceNamesCache, IFileProvider fileProvider,string resourcePath, string pathName,bool EnabledFiles)
         {
             if (resourceManager == null)
             {
@@ -105,7 +106,7 @@ namespace Microsoft.Extensions.Localization
             _resourceManager = resourceManager;
             _resourceBaseName = baseName;
             _resourceNamesCache = resourceNamesCache;
-            CultureFileCache = new List<string>();
+            _EnabledFiles = EnabledFiles;
         }
 
         /// <inheritdoc />
@@ -154,7 +155,8 @@ namespace Microsoft.Extensions.Localization
                     _resourceNamesCache,
                     _fileProvider,
                     _resourcePath,
-                    PathName)
+                    PathName,
+                    _EnabledFiles)
                 : new ResourceManagerWithCultureStringLocalizer(
                     _resourceManager,
                     _resourceStringProvider,
@@ -163,7 +165,8 @@ namespace Microsoft.Extensions.Localization
                     culture, 
                     _fileProvider,
                     _resourcePath,
-                    PathName);
+                    PathName,
+                    _EnabledFiles);
         }
 
         /// <inheritdoc />
@@ -209,7 +212,6 @@ namespace Microsoft.Extensions.Localization
             }
             var cultureName = (culture ?? CultureInfo.CurrentUICulture).Name;
             var cacheKey = $"name={name}&culture={cultureName}";
-
             if (_missingManifestCache.ContainsKey(cacheKey))
             {
                 return null;
@@ -217,51 +219,40 @@ namespace Microsoft.Extensions.Localization
 
             try
             {
-                var fileCacheKey= $"culture={PathName}.{cultureName}.resx".ToLower();
-                if (!_missingManifestCache.ContainsKey(fileCacheKey))
+                var fKey = $"culture={PathName}.{cultureName}.resx".ToLower();
+                if (_EnabledFiles && !_missingManifestCache.ContainsKey(fKey))
                 {
-                    if (_fileResourceCache.ContainsKey(fileCacheKey))
+                    if (!_fileResourceCache.ContainsKey(fKey))
                     {
-                        if (_fileResourceCache[fileCacheKey].ContainsKey(name))
-                        {
-                            return _fileResourceCache[fileCacheKey][name];
-                        }
-                    }
-                    else
-                    {
-                        if (!CultureFileCache.Contains(fileCacheKey))
-                            CultureFileCache.Add(fileCacheKey);
                         IChangeToken CToken;
-                        ConcurrentDictionary<string, string> _cultureResourceCache = GetFileChangeTokenResource(cultureName,out CToken);
-                        if (CToken!=null && CToken.ActiveChangeCallbacks)
-                        {
+                        ConcurrentDictionary<string, string> _cultureResourceCache = GetFileChangeTokenResource(cultureName, out CToken);
+                        if (CToken != null && CToken.ActiveChangeCallbacks)
                             CToken.RegisterChangeCallback(itemKey =>
                             {
-                                if (_fileResourceCache.ContainsKey(fileCacheKey))
+                                if (_fileResourceCache.ContainsKey(fKey))
                                 {
                                     ConcurrentDictionary<string, string> outCache;
-                                    _fileResourceCache.TryRemove(fileCacheKey, out outCache);
+                                    _fileResourceCache.TryRemove(fKey, out outCache);
                                 }
-                                if (_missingManifestCache.ContainsKey(fileCacheKey))
+                                var delCKey = $"&culture={cultureName}";
+                                var vDelKey = _missingManifestCache.Where(w => w.Key == fKey || w.Key.EndsWith(delCKey)).Select(w => w.Key);
+                                foreach (var dKey in vDelKey)
                                 {
                                     object outobject;
-                                    _missingManifestCache.TryRemove(fileCacheKey, out outobject);
+                                    _missingManifestCache.TryRemove(dKey, out outobject);
                                 }
                             }, null);
-                        }
-                        if (_cultureResourceCache == null)
+                        if (_cultureResourceCache != null)
                         {
-                            _missingManifestCache.TryAdd(fileCacheKey, null);
+                            _fileResourceCache.TryAdd(fKey, _cultureResourceCache);
+                            if (_cultureResourceCache.ContainsKey(name))
+                                return _cultureResourceCache[name];
                         }
                         else
-                        {
-                            _fileResourceCache.TryAdd(fileCacheKey, _cultureResourceCache);
-                            if (_cultureResourceCache.ContainsKey(name))
-                            {
-                                return _cultureResourceCache[name];
-                            }
-                        }
+                            _missingManifestCache.TryAdd(fKey, null);
                     }
+                    if (_fileResourceCache.ContainsKey(fKey) && _fileResourceCache[fKey].ContainsKey(name))
+                        return _fileResourceCache[fKey][name];
                 }
                 return culture == null ?  _resourceManager.GetString(name) : _resourceManager.GetString(name, culture);
             }
@@ -296,6 +287,7 @@ namespace Microsoft.Extensions.Localization
             {
                 var stream = vFileInfo.CreateReadStream();
                 XElement XRoot = XElement.Load(stream);
+                stream.Dispose();
                 var rData = XRoot.Elements("data").Where(w => w.Attribute("name") != null && w.Element("value") != null);
                 if (rData.Count() > 0)
                 {

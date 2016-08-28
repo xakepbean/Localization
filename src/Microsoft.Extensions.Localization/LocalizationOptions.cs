@@ -23,6 +23,7 @@ namespace Microsoft.Extensions.Localization
         /// <summary>
         /// Enable *.resx resource file
         /// </summary>
-        public bool EnabledFileResources { get; set; } = false;
+        public bool EnabledFiles { get; set; } = true;
+
     }
 }

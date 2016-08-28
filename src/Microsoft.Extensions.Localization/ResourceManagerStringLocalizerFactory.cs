@@ -26,6 +26,7 @@ namespace Microsoft.Extensions.Localization
         private readonly string _resourcesRelativePath;
         private readonly string _ResourcePath;
         private readonly IFileProvider _fileProvider;
+        private readonly bool _EnabledFiles = false;
         /// <summary>
         /// Creates a new <see cref="ResourceManagerStringLocalizer"/>.
         /// </summary>
@@ -47,6 +48,7 @@ namespace Microsoft.Extensions.Localization
             
             _hostingEnvironment = hostingEnvironment;
             _resourcesRelativePath = localizationOptions.Value.ResourcesPath ?? string.Empty;
+            _EnabledFiles = localizationOptions.Value.EnabledFiles;
             _fileProvider = localizationOptions.Value.FileProvider ?? _hostingEnvironment.ContentRootFileProvider;
             if (!string.IsNullOrEmpty(_resourcesRelativePath))
             {
@@ -87,7 +89,8 @@ namespace Microsoft.Extensions.Localization
                     _resourceNamesCache,
                     _fileProvider,
                     _ResourcePath,
-                    pathName)
+                    pathName,
+                    _EnabledFiles)
             );
         }
 
@@ -114,7 +117,11 @@ namespace Microsoft.Extensions.Localization
                     new ResourceManager(baseName, assembly),
                     assembly,
                     baseName,
-                    _resourceNamesCache, _fileProvider, _ResourcePath, pathName);
+                    _resourceNamesCache,
+                    _fileProvider,
+                    _ResourcePath,
+                    pathName,
+                    _EnabledFiles);
             });
         }
 
@@ -124,7 +131,6 @@ namespace Microsoft.Extensions.Localization
             {
                 return name.Substring(prefix.Length);
             }
-
             return name;
         }
 

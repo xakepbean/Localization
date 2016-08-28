@@ -30,13 +30,14 @@ namespace Microsoft.Extensions.Localization
         /// <param name="fileProvider"></param>
         /// <param name="resourcePath"></param>
         /// <param name="pathName"></param>
+        /// <param name="EnabledFiles"></param>
         internal ResourceManagerWithCultureStringLocalizer(
             ResourceManager resourceManager,
             IResourceStringProvider resourceStringProvider,
             string baseName,
             IResourceNamesCache resourceNamesCache,
-            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName)
-            : base(resourceManager, resourceStringProvider, baseName, resourceNamesCache, fileProvider, resourcePath,pathName)
+            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName, bool EnabledFiles)
+            : base(resourceManager, resourceStringProvider, baseName, resourceNamesCache, fileProvider, resourcePath,pathName,EnabledFiles)
         {
             if (resourceManager == null)
             {
@@ -77,13 +78,14 @@ namespace Microsoft.Extensions.Localization
         /// <param name="fileProvider"></param>
         /// <param name="resourcePath"></param>
         /// <param name="pathName"></param>
+        /// <param name="EnabledFiles"></param>
         public ResourceManagerWithCultureStringLocalizer(
             ResourceManager resourceManager,
             Assembly resourceAssembly,
             string baseName,
             IResourceNamesCache resourceNamesCache,
-            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName)
-            : base(resourceManager, resourceAssembly, baseName, resourceNamesCache, fileProvider, resourcePath,pathName)
+            CultureInfo culture, IFileProvider fileProvider, string resourcePath, string pathName, bool EnabledFiles)
+            : base(resourceManager, resourceAssembly, baseName, resourceNamesCache, fileProvider, resourcePath,pathName,EnabledFiles)
         {
             if (resourceManager == null)
             {

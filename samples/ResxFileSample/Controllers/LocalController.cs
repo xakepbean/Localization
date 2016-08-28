@@ -107,11 +107,10 @@ namespace ResxFileSample.Controllers
             }
             if (resDoc.Elements("data").Count() > 0)
             {
-               
-
                 System.IO.MemoryStream NewFileStream = new MemoryStream();
                 resDoc.Save(NewFileStream);
                 System.IO.File.WriteAllBytes(newfilepath, NewFileStream.ToArray());
+                NewFileStream.Dispose();
             }
 
             return RMode;

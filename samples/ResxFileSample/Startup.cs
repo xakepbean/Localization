@@ -25,7 +25,7 @@ namespace ResxFileSample
         public void ConfigureServices(IServiceCollection services)
         {
             // Add framework services.
-            services.AddLocalization(options => { options.ResourcesPath = "Resources"; options.EnabledFileResources = true; });
+            services.AddLocalization(options => { options.ResourcesPath = "Resources"; options.EnabledFiles = true; });
             services.AddMvcCore()
                     .AddJsonFormatters()
                     .AddViewLocalization()

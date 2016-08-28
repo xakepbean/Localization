@@ -71,6 +71,7 @@ $@"<!doctype html>
 <body>");
                  HttpContext.Response.WriteAsync($"<h1>{_localizer["Request Localization Sample"]}</h1>");
                  HttpContext.Response.WriteAsync($"<h1>{_localizer["Hello"]}</h1>");
+                 HttpContext.Response.WriteAsync($"<h1>{_localizer["Where"]}</h1>");
                  HttpContext.Response.WriteAsync("<form id=\"theForm\" method=\"get\">");
                  HttpContext.Response.WriteAsync($"<label for=\"culture\">{_localizer["Culture"]}: </label>");
                  HttpContext.Response.WriteAsync("<select id=\"culture\" name=\"culture\">");
