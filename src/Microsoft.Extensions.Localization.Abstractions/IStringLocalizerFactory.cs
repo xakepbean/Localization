@@ -26,7 +26,6 @@ namespace Microsoft.Extensions.Localization
         /// <param name="location">The location to load resources from.</param>
         /// <returns>The <see cref="IStringLocalizer"/>.</returns>
         IStringLocalizer Create(string baseName, string location);
-
-        bool RemoveFileCache(CultureInfo culture=null, string resourceFileName = null);
+        
     }
 }

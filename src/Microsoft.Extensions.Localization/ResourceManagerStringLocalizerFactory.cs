@@ -26,7 +26,8 @@ namespace Microsoft.Extensions.Localization
         private readonly string _resourcesRelativePath;
         private readonly string _ResourcePath;
         private readonly IFileProvider _fileProvider;
-
+        private readonly FileSystemWatcher _fileWatcher;
+        private readonly string _WatcherRoot;
         /// <summary>
         /// Creates a new <see cref="ResourceManagerStringLocalizer"/>.
         /// </summary>
@@ -45,8 +46,7 @@ namespace Microsoft.Extensions.Localization
             {
                 throw new ArgumentNullException(nameof(localizationOptions));
             }
-      
-            _ResourcePath = "/";
+            
             _hostingEnvironment = hostingEnvironment;
             _resourcesRelativePath = localizationOptions.Value.ResourcesPath ?? string.Empty;
             _fileProvider = localizationOptions.Value.FileProvider ?? _hostingEnvironment.ContentRootFileProvider;
@@ -55,6 +55,28 @@ namespace Microsoft.Extensions.Localization
                 _ResourcePath += _resourcesRelativePath.TrimEnd(Path.AltDirectorySeparatorChar).TrimEnd(Path.DirectorySeparatorChar) + "/";
                 _resourcesRelativePath = _resourcesRelativePath.Replace(Path.AltDirectorySeparatorChar, '.')
                     .Replace(Path.DirectorySeparatorChar, '.') + ".";
+            }
+            _WatcherRoot = $"{_hostingEnvironment.ContentRootPath}{Path.DirectorySeparatorChar}{_ResourcePath}";
+            _fileWatcher = new FileSystemWatcher(_WatcherRoot);
+            _fileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            _fileWatcher.Filter = "*.resx";
+            _fileWatcher.IncludeSubdirectories = true;
+            _fileWatcher.Changed += OnFileChanged;
+            _fileWatcher.Deleted += OnFileChanged;
+            _fileWatcher.Created += OnFileChanged;
+            _fileWatcher.Renamed += OnFileChanged;
+            _fileWatcher.EnableRaisingEvents = true;
+        }
+        
+        private void OnFileChanged(object sender, FileSystemEventArgs e)
+        {
+            var relativePath = e.FullPath.Substring(_WatcherRoot.Length).Replace(Path.AltDirectorySeparatorChar,'.').Replace(Path.DirectorySeparatorChar, '.');
+            relativePath = $"culture={relativePath}".ToLower();
+            var vIString = _localizerCache.Where(w => w.Value.CultureFileCache.Contains(relativePath));
+            if (vIString.Count() > 0)
+            {
+                var vKey = vIString.Select(w => w.Key).First();
+                _localizerCache[vKey].RemoveFileCache(relativePath);
             }
         }
 
@@ -129,27 +151,5 @@ namespace Microsoft.Extensions.Localization
             return name;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="Culture"></param>
-        /// <param name="PathName"></param>
-        /// <returns></returns>
-        public bool RemoveFileCache(CultureInfo Culture = null, string PathName = null)
-        {
-            Culture = Culture ?? CultureInfo.CurrentUICulture;
-            var vIString = _localizerCache.Where(w => w.Value.CultureCache.Contains(Culture.Name)
-               && (PathName == null || (PathName != null && w.Value.PathName == PathName)));
-            if (vIString.Count() > 0)
-            {
-                var vKey = vIString.Select(w => w.Key).ToList();
-                foreach (var item in vKey)
-                {
-                    _localizerCache[item].RemoveFileCache(Culture);
-                }
-                return true;
-            }
-            return false;
-        }
     }
 }

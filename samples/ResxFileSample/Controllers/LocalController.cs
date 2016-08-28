@@ -112,8 +112,6 @@ namespace ResxFileSample.Controllers
                 System.IO.MemoryStream NewFileStream = new MemoryStream();
                 resDoc.Save(NewFileStream);
                 System.IO.File.WriteAllBytes(newfilepath, NewFileStream.ToArray());
-                IStringLocalizerFactory StringFactory = HttpContext.RequestServices.GetRequiredService<IStringLocalizerFactory>();
-                StringFactory.RemoveFileCache(CultureInfo.CurrentUICulture,PathName);
             }
 
             return RMode;

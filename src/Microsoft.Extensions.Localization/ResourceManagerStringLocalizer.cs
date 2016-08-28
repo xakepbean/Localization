@@ -29,7 +29,7 @@ namespace Microsoft.Extensions.Localization
         private readonly string _resourcePath;
         private readonly IFileProvider _fileProvider;
 
-        protected internal List<string> CultureCache { get; set; }
+        protected internal List<string> CultureFileCache { get; set; }
         protected internal string PathName { get; set; }
 
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, string>> _fileResourceCache=new ConcurrentDictionary<string, ConcurrentDictionary<string, string>>();
@@ -104,7 +104,7 @@ namespace Microsoft.Extensions.Localization
             _resourceManager = resourceManager;
             _resourceBaseName = baseName;
             _resourceNamesCache = resourceNamesCache;
-            CultureCache = new List<string>();
+            CultureFileCache = new List<string>();
         }
 
         /// <inheritdoc />
@@ -216,7 +216,7 @@ namespace Microsoft.Extensions.Localization
 
             try
             {
-                var fileCacheKey= $"culture={cultureName}";//CultureCache
+                var fileCacheKey= $"culture={PathName}.{cultureName}.resx".ToLower();  
                 if (!_missingManifestCache.ContainsKey(fileCacheKey))
                 {
                     if (_fileResourceCache.ContainsKey(fileCacheKey))
@@ -228,10 +228,9 @@ namespace Microsoft.Extensions.Localization
                     }
                     else
                     {
-                        if (!CultureCache.Contains(cultureName))
-                            CultureCache.Add(cultureName);
+                        if (!CultureFileCache.Contains(fileCacheKey))
+                            CultureFileCache.Add(fileCacheKey);
                         string fileSubPath = $"{_resourcePath}{PathName.Replace('.','/')}.{cultureName}.resx";
-                        
                         ConcurrentDictionary<string, string> _cultureResourceCache = GetFileResource(fileSubPath);
                         if(_cultureResourceCache==null)
                         {
@@ -282,19 +281,17 @@ namespace Microsoft.Extensions.Localization
             return _cultureResourceCache;
         }
 
-        protected internal void RemoveFileCache(CultureInfo culture)
+        protected internal void RemoveFileCache(string pathName)
         {
-            var cultureName = (culture ?? CultureInfo.CurrentUICulture).Name;
-            var fileCacheKey = $"culture={cultureName}";
-            if (_fileResourceCache.ContainsKey(fileCacheKey))
+            if (_fileResourceCache.ContainsKey(pathName))
             {
                 ConcurrentDictionary<string, string> outCache;
-                _fileResourceCache.TryRemove(fileCacheKey, out outCache);
+                _fileResourceCache.TryRemove(pathName, out outCache);
             }
-            if (_missingManifestCache.ContainsKey(fileCacheKey))
+            if (_missingManifestCache.ContainsKey(pathName))
             {
                 object outobject;
-                _missingManifestCache.TryRemove(fileCacheKey, out outobject);
+                _missingManifestCache.TryRemove(pathName, out outobject);
             }
         }
 
