@@ -11,6 +11,7 @@ using Microsoft.Extensions.Localization.Internal;
 using Microsoft.Extensions.FileProviders;
 using System.Xml.Linq;
 using System.Linq;
+using Microsoft.Extensions.Primitives;
 
 namespace Microsoft.Extensions.Localization
 {
@@ -216,7 +217,7 @@ namespace Microsoft.Extensions.Localization
 
             try
             {
-                var fileCacheKey= $"culture={PathName}.{cultureName}.resx".ToLower();  
+                var fileCacheKey= $"culture={PathName}.{cultureName}.resx".ToLower();
                 if (!_missingManifestCache.ContainsKey(fileCacheKey))
                 {
                     if (_fileResourceCache.ContainsKey(fileCacheKey))
@@ -230,12 +231,23 @@ namespace Microsoft.Extensions.Localization
                     {
                         if (!CultureFileCache.Contains(fileCacheKey))
                             CultureFileCache.Add(fileCacheKey);
-                        string fileSubPath = $"{_resourcePath}{PathName.Replace('.','/')}.{cultureName}.resx";
-                        ConcurrentDictionary<string, string> _cultureResourceCache = GetFileResource(fileSubPath);
-                        if(_cultureResourceCache==null)
+                        IChangeToken CToken;
+                        ConcurrentDictionary<string, string> _cultureResourceCache = GetFileChangeTokenResource(cultureName,out CToken);
+                        if (CToken!=null && CToken.ActiveChangeCallbacks)
                         {
-                            fileSubPath = $"{_resourcePath}{PathName}.{cultureName}.resx";
-                            _cultureResourceCache = GetFileResource(fileSubPath);
+                            CToken.RegisterChangeCallback(itemKey =>
+                            {
+                                if (_fileResourceCache.ContainsKey(fileCacheKey))
+                                {
+                                    ConcurrentDictionary<string, string> outCache;
+                                    _fileResourceCache.TryRemove(fileCacheKey, out outCache);
+                                }
+                                if (_missingManifestCache.ContainsKey(fileCacheKey))
+                                {
+                                    object outobject;
+                                    _missingManifestCache.TryRemove(fileCacheKey, out outobject);
+                                }
+                            }, null);
                         }
                         if (_cultureResourceCache == null)
                         {
@@ -260,7 +272,23 @@ namespace Microsoft.Extensions.Localization
             }
         }
 
-        private ConcurrentDictionary<string, string> GetFileResource(string subPath)
+        private ConcurrentDictionary<string, string> GetFileChangeTokenResource(string cultureName, out IChangeToken CToken)
+        {
+            string subPath = $"{_resourcePath}{PathName.Replace('.', '/')}.{cultureName}.resx";
+            ConcurrentDictionary<string, string> _cultureResourceCache = GetFileResource(subPath, out CToken);
+            if (_cultureResourceCache == null)
+            {
+                var dotsubPath = $"{_resourcePath}{PathName}.{cultureName}.resx";
+                _cultureResourceCache = GetFileResource(dotsubPath, out CToken);
+                if (_cultureResourceCache == null)
+                {
+                    CToken = _fileProvider.Watch(subPath);
+                }
+            }
+            return _cultureResourceCache;
+        }
+
+        private ConcurrentDictionary<string, string> GetFileResource(string subPath, out IChangeToken CToken)
         {
             ConcurrentDictionary<string, string> _cultureResourceCache = null;
             var vFileInfo = _fileProvider.GetFileInfo(subPath);
@@ -277,24 +305,12 @@ namespace Microsoft.Extensions.Localization
                         _cultureResourceCache.TryAdd(item.Attribute("name").Value, item.Element("value").Value);
                     }
                 }
+                CToken = _fileProvider.Watch(subPath);
             }
+            else
+                CToken = null;
             return _cultureResourceCache;
         }
-
-        protected internal void RemoveFileCache(string pathName)
-        {
-            if (_fileResourceCache.ContainsKey(pathName))
-            {
-                ConcurrentDictionary<string, string> outCache;
-                _fileResourceCache.TryRemove(pathName, out outCache);
-            }
-            if (_missingManifestCache.ContainsKey(pathName))
-            {
-                object outobject;
-                _missingManifestCache.TryRemove(pathName, out outobject);
-            }
-        }
-
 
         private IEnumerable<string> GetResourceNamesFromCultureHierarchy(CultureInfo startingCulture)
         {
