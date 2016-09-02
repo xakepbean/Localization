@@ -15,6 +15,10 @@ using ResxFileSample.Models;
 using System.Xml;
 using System.Xml.Linq;
 using System.Text.Encodings.Web;
+using System.Reflection;
+using Microsoft.AspNetCore.Mvc.Razor;
+using System.Resources;
+using System.Collections;
 
 namespace ResxFileSample.Controllers
 {
@@ -43,65 +47,193 @@ namespace ResxFileSample.Controllers
             return View(AcceptUI.Options.SupportedCultures);
         }
 
-        
-        public IActionResult Edit(string ID)
+        public List<TreeNode> ResxFile(string ID)
         {
-            var locOptions =HttpContext.RequestServices.GetService<IOptions<LocalizationOptions>>();
-            string ResourcesPath = Path.Combine(_env.ContentRootPath, locOptions.Value.ResourcesPath);
-            //var vNode = GetResourcesFile(MapPath);
-            //return View(vNode);
-            string MapPath= Path.Combine(ResourcesPath,ID.Replace('.',Path.DirectorySeparatorChar)+".resx");
-            string NewMapPath = Path.Combine(ResourcesPath, ID.Replace('.', Path.DirectorySeparatorChar) + "."+ CultureInfo.CurrentCulture.Name + ".resx");
-            return View(LoadResource(MapPath, NewMapPath));
+            var locOptions = HttpContext.RequestServices.GetService<IOptions<LocalizationOptions>>();
+            string ResourcesPath = locOptions.Value.ResourcesPath.Split(new char[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries)[0];
+            var razorOptions = HttpContext.RequestServices.GetService<IOptions<RazorViewEngineOptions>>();
 
-        }
-        private List<ResouresEditModel> LoadResource(string filepath, string newfilepath)
-        {
-            var ht = new Dictionary<string, ResouresEditModel>();
-            var d = XElement.Load(filepath);
-            foreach (var node in d.Elements("data"))
+            var razorPath = razorOptions.Value.AreaViewLocationFormats.Select(w =>
             {
-                if (node.Attribute("name") != null && node.Element("value") !=null)
+                var vpath = w.TrimStart('/').Split('/');
+                if (vpath.Length > 0)
+                    return vpath[0];
+                return string.Empty;
+            }).Where(w => !string.IsNullOrWhiteSpace(w)).Distinct().Concat(
+             razorOptions.Value.ViewLocationFormats.Select(w =>
+            {
+                var vpath = w.TrimStart('/').Split('/');
+                if (vpath.Length > 0)
+                    return vpath[0];
+                return string.Empty;
+            }).Where(w => !string.IsNullOrWhiteSpace(w)).Distinct()).Distinct();
+
+            List<TreeNode> ReturnTree = new List<TreeNode>();
+            if (string.IsNullOrWhiteSpace(ID))
+            {
+                ReturnTree.Add(new TreeNode() { id = ResourcesPath, name = ResourcesPath, isParent = true });
+                //ReturnTree.AddRange(razorPath.Where(w => _env.ContentRootFileProvider.GetDirectoryContents(w).Exists).Select(w => new TreeNode() { id = w, name = w, isParent = true }));
+            }
+            else
+            {
+                var vRoorDir= ID.Split('.')[0];
+                if (razorPath.Contains(vRoorDir))
                 {
-                    string name = node.Attribute("name").Value;
-                    string val = node.Element("value").Value;
-                    if (!string.IsNullOrWhiteSpace(val) && !ht.ContainsKey(name))
-                        ht.Add(name, new ResouresEditModel() { Name = name, OldValue = val, NewValue = val });
+                    ID = ID.Replace('.', '/');
+                    var vDir = _env.ContentRootFileProvider.GetDirectoryContents(ID);
+                    if (vDir.Exists)
+                    {
+                        var vFile = vDir.GetEnumerator();
+                        while (vFile.MoveNext())
+                        {
+                            ReturnTree.Add(new TreeNode()
+                            {
+                                id = vFile.Current.PhysicalPath.Substring(_env.ContentRootPath.Length+1).Replace(Path.DirectorySeparatorChar,'.'),
+                                name = vFile.Current.Name,
+                                isParent = vFile.Current.IsDirectory
+                            });
+                        }
+                    }
+                }
+                else
+                {
+                    ID += ".";
+                    var vResource = Assembly.GetEntryAssembly().GetManifestResourceNames().Select(w => w.Substring(w.IndexOf('.') + 1)).Where(w => w.StartsWith(ID));
+                    ReturnTree.AddRange(vResource.Select(w =>
+                    {
+                        var vID = w.Substring(0, w.IndexOf('.', ID.Length));
+                        var vName = vID.Substring(ID.Length);
+                        var vLast = w.Substring(vID.Length);
+                        vName += vLast.Length > 10 ? "" : ".resx";
+                        return new TreeNode()
+                        {
+                            id = vID,
+                            name = vName,
+                            isParent = vLast.Length > 10
+                        };
+                    }).Distinct());
                 }
             }
-
-            return ht.Select(w => w.Value).ToList();
+            return ReturnTree;
         }
 
-        private List<ResouresEditModel> SaveResource(string filepath, string newfilepath,string PathName,List<ResouresEditModel> RMode)
+        public IActionResult Edit(string ID)
         {
-            var defDoc = XElement.Load(filepath);
+            return View(ResxFile(null));
+        }
+        
+        public IActionResult EditResx(string ID, string ReName)
+        {
+            if (string.IsNullOrWhiteSpace(ID) || string.IsNullOrWhiteSpace(ReName))
+            {
+                return View(new List<ResouresEditModel>());
+            }
+
+            ViewData["ReName"] = ReName;
+            if (ReName.EndsWith(".cshtml",StringComparison.OrdinalIgnoreCase))
+            {
+                var locOptions = HttpContext.RequestServices.GetService<IOptions<LocalizationOptions>>();
+                string ResourcesPath = Path.Combine(_env.ContentRootPath, locOptions.Value.ResourcesPath);
+
+                string MapPath = Path.Combine(ResourcesPath, ReName.Replace('.', Path.DirectorySeparatorChar) + ".resx");
+                string NewMapPath = Path.Combine(ResourcesPath, ReName.Replace('.', Path.DirectorySeparatorChar) + "." + ID + ".resx");
+                return View(new List<ResouresEditModel>()); //return View(LoadResource(MapPath, NewMapPath));
+            }
+            else
+            {               
+                return View(LoadResource(ID, ReName));
+            }
+
+        }
+      
+        [HttpPost]
+        public IActionResult EditResx(string ID, string ReName, List<ResouresEditModel> RMode)
+        {
+            if (string.IsNullOrWhiteSpace(ID) || string.IsNullOrWhiteSpace(ReName))
+            {
+                return View(RMode);
+            }
+            ViewData["ReName"] = ReName;
+            SaveResource(ID, ReName, RMode);
+            return View(RMode);
+        }
+
+        private List<ResouresEditModel> LoadResource(string CultureName, string ResourceName)
+        {
+            List<ResouresEditModel> ListRes = new List<ResouresEditModel>();
+            #region Source Resource
+            using (var resourceStream = Assembly.GetEntryAssembly().GetManifestResourceStream(_env.ApplicationName + "." + ResourceName + ".resources"))
+            {
+                if (resourceStream != null)
+                {
+                    using (var resources = new ResourceReader(resourceStream))
+                    {
+                        foreach (DictionaryEntry entry in resources)
+                        {
+                            ListRes.Add(new ResouresEditModel
+                            {
+                                ResourceName = (string)entry.Key,
+                                DefaultValue = (string)entry.Value
+                            });
+                        }
+                    }
+                }
+            }
+            #endregion
+            var vResxFile = _env.ContentRootFileProvider.GetFileInfo(ResourceName + "." + CultureName + ".resx");
+            if (vResxFile.Exists)
+            {
+                Dictionary<string, string> DicNew = new Dictionary<string, string>();
+                using (var FStream = vResxFile.CreateReadStream())
+                {
+                    var d = XElement.Load(FStream);
+                    foreach (var node in d.Elements("data"))
+                    {
+                        if (node.Attribute("name") != null && node.Element("value") != null)
+                        {
+                            string name = node.Attribute("name").Value;
+                            string val = node.Element("value").Value;
+                            if (!string.IsNullOrWhiteSpace(val) && !DicNew.ContainsKey(name))
+                                DicNew.Add(name, val);
+                        }
+                    }
+                    FStream.Dispose();
+                }
+                for (int i = 0; i < ListRes.Count; i++)
+                {
+                    if (DicNew.ContainsKey(ListRes[i].ResourceName))
+                        ListRes[i].LocalizedValue = DicNew[ListRes[i].ResourceName];
+                }
+            }
+            return ListRes;
+        }
+
+        private List<ResouresEditModel> SaveResource(string CultureName, string ResourceName, List<ResouresEditModel> RMode)
+        {
+            string NewMapPath = Path.Combine(_env.ContentRootPath, ResourceName.Replace('.', Path.DirectorySeparatorChar) + "." + CultureName + ".resx");
             var resDoc = new XElement("Init");
-            if (!System.IO.File.Exists(newfilepath))
+            if (!System.IO.File.Exists(NewMapPath))
             {
                 resDoc = XElement.Parse("<?xml version=\"1.0\" encoding=\"utf-8\"?><root><resheader name=\"resmimetype\"><value>text/microsoft-resx</value></resheader><resheader name=\"version\"><value>2.0</value></resheader><resheader name=\"reader\"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader><resheader name=\"writer\"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader></root>");
             }
             else
             {
-                resDoc = XElement.Load(newfilepath);
+                resDoc = XElement.Load(NewMapPath);
             }
-           
+
             var changedResources = new Dictionary<string, string>();
             foreach (var di in RMode)
             {
-                var resourceKey = di.Name;
-                var txtValue = di.NewValue;
-                var txtDefault = di.OldValue;
-                if (txtDefault != txtValue)
+                if (di.DefaultValue != di.LocalizedValue)
                 {
-                    var node = resDoc.Elements().Where(w => w.Name == "data" && w.Attribute("name") != null && w.Attribute("name").Value == di.Name);
+                    var node = resDoc.Elements().Where(w => w.Name == "data" && w.Attribute("name") != null && w.Attribute("name").Value == di.ResourceName);
                     if (node.Count() == 0)
                     {
-                      resDoc.Add(new XElement("data", new XAttribute("name", di.Name),  new XElement("value", di.NewValue)));
+                        resDoc.Add(new XElement("data", new XAttribute("name", di.ResourceName), new XElement("value", di.LocalizedValue)));
                     }
                     else
                     {
-                        node.First().Element("value").Value = di.NewValue;
+                        node.First().Element("value").Value = di.LocalizedValue;
                     }
                 }
             }
@@ -109,45 +241,10 @@ namespace ResxFileSample.Controllers
             {
                 System.IO.MemoryStream NewFileStream = new MemoryStream();
                 resDoc.Save(NewFileStream);
-                System.IO.File.WriteAllBytes(newfilepath, NewFileStream.ToArray());
+                System.IO.File.WriteAllBytes(NewMapPath, NewFileStream.ToArray());
                 NewFileStream.Dispose();
             }
-
             return RMode;
-        }
-
-        [HttpPost]
-        public IActionResult Edit(string ID, List<ResouresEditModel> RMode)
-        {
-            var locOptions = HttpContext.RequestServices.GetService<IOptions<LocalizationOptions>>();
-            string ResourcesPath = Path.Combine(_env.ContentRootPath, locOptions.Value.ResourcesPath);
-            //var vNode = GetResourcesFile(MapPath);
-            //return View(vNode);
-            string MapPath = Path.Combine(ResourcesPath, ID.Replace('.', Path.DirectorySeparatorChar) + ".resx");
-            string NewMapPath = Path.Combine(ResourcesPath, ID.Replace('.', Path.DirectorySeparatorChar) + "."+ CultureInfo.CurrentUICulture.Name + ".resx");
-
-            return View(SaveResource(MapPath, NewMapPath, ID, RMode));
-        }
-        //public IActionResult Edit(string ID)
-        //{
-        //    var locOptions = HttpContext.RequestServices.GetService<IOptions<LocalizationOptions>>();
-        //    string MapPath = Path.Combine(_env.ContentRootPath, locOptions.Value.ResourcesPath);
-        //    var vNode = GetResourcesFile(MapPath);
-        //    return View(vNode);
-        //}
-
-        private List<TreeNode> GetResourcesFile(string MapPath)
-        {
-            List<TreeNode> TNode = new List<TreeNode>();
-            foreach (var item in Directory.GetDirectories(MapPath))
-            {
-                TNode.Add(new TreeNode() { name = new DirectoryInfo(item).Name, children = GetResourcesFile(item) });
-            }
-            foreach (var item in Directory.GetFiles(MapPath))
-            {
-                TNode.Add(new TreeNode() { name = Path.GetFileName(item) });
-            }
-            return TNode;
         }
 
         public IActionResult Create() => View();

@@ -7,11 +7,11 @@ namespace ResxFileSample.Models
 {
     public class ResouresEditModel
     {
-        public string Name { get; set; }
+        public string ResourceName { get; set; }
 
-        public string OldValue { get; set; }
+        public string DefaultValue { get; set; }
 
-        public string NewValue { get; set; }
+        public string LocalizedValue { get; set; }
         
     }
 }

@@ -1,49 +1,81 @@
-﻿@model List<ResxFileSample.Models.ResouresEditModel>
+﻿@model List<ResxFileSample.Models.TreeNode>
 @{
     ViewData["Title"] = "国际语言编辑";
 }
+
 <link href="~/lib/zTree/zTreeStyle.css" rel="stylesheet" />
 <script src="~/lib/zTree/jquery.ztree.all.min.js"></script>
-@*<script type="text/javascript">
-    $(document).ready(function () {
-        var setting={};
-        var zNodes=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
-        $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+<script type="text/javascript">
 
-
-
-    });
-    </script>*@
-<ul id="treeDemo" class="ztree"></ul>
-<form asp-action="Edit">
-    <table width="100%">
-        <thead>
-            <tr>
-                <td>
-                    OldValue
-                </td>
-                <td>
-                    NewValue
-                </td>
-            </tr>
-        </thead>
-        @for (int i = 0; i < Model.Count; i++)
-        {
-            <tr>
-                <td colspan="2">
-                    @Html.DisplayFor(modelItem => Model[i].Name)
-                    @Html.HiddenFor(modelItem => Model[i].Name)
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    @Html.TextBoxFor(modelItem => Model[i].OldValue, new { @readonly = "readonly" })
-                </td>
-                <td>
-                    @Html.TextBoxFor(modelItem => Model[i].NewValue)
-                </td>
-            </tr>
+    var setting={
+        async: {
+            enable: true,
+            url:"../ResxFile",
+            autoParam:["id", "name=n"]
+        },
+        callback: {
+            onClick: onClick
         }
-    </table>
-    <input type="submit" id="btnSubmit" value="保存" />
-</form>
+    };
+    var log, className = "dark";
+
+    function onClick(event, treeId, treeNode, clickFlag) {
+        if(treeNode.isParent){
+            if(!treeNode.open){
+                var treeObj = $.fn.zTree.getZTreeObj("treeDemo");
+                var nodes = treeObj.getSelectedNodes();
+                if (nodes.length>0) {
+                    treeObj.expandNode(nodes[0],true);
+                }
+            }
+            else{
+                var treeObj = $.fn.zTree.getZTreeObj("treeDemo");
+                var nodes = treeObj.getSelectedNodes();
+                if (nodes.length>0) {
+                    treeObj.expandNode(nodes[0],false);
+                }
+            }
+        }
+        else{
+            $("#editiframe").attr("src","@Url.Action("EditResx", new { ID = ViewContext.RouteData.Values["ID"] })?ReName="+treeNode.id);
+        }
+    }
+    function showLog(str) {
+        if (!log) log = $("#log");
+        log.append("<li class='"+className+"'>"+str+"</li>");
+        if(log.children("li").length > 8) {
+            log.get(0).removeChild(log.children("li")[0]);
+        }
+    }
+    function getTime() {
+        var now= new Date(),
+        h=now.getHours(),
+        m=now.getMinutes(),
+        s=now.getSeconds();
+        return (h+":"+m+":"+s);
+    }
+    var zNodes=@Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+
+    $(document).ready(function () {
+        $.fn.zTree.init($("#treeDemo"), setting, zNodes);
+        $("#divIframe").width($("#divContent").width()-$("#leftTree").width());
+        $("#editiframe").load(function(){  
+            var thisheight = $(this).contents().find("body").height()+30;  
+            $(this).height(thisheight < 500 ? 500 : thisheight);  
+        });  
+    });
+</script>
+
+<div id="divContent">
+     
+    <div id="leftTree" style="float:left;width:300px;">
+        <button type="button" class="btn btn-sm btn-default"><a asp-action="Index">返回</a></button>
+        <ul id="treeDemo" class="ztree"></ul>
+        <ul id="log" class="log"></ul>
+    </div>
+    <div id="divIframe"  style="float:left;">
+        <iframe id="editiframe" frameborder="0" src="/Local/EditResx" width="100%"></iframe>
+    </div>
+    <div style="clear:both;"></div>
+</div>
+

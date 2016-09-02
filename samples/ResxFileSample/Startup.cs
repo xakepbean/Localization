@@ -27,6 +27,17 @@ namespace ResxFileSample
             // Add framework services.
             services.AddLocalization(options => { options.ResourcesPath = "Resources"; options.EnabledFiles = true; });
             services.AddMvcCore()
+            //    .AddRazorViewEngine(option =>
+            //{
+            //    option.ViewLocationFormats.Clear();
+            //    option.ViewLocationFormats.Add("/Views1/{1}/{0}" + RazorViewEngine.ViewExtension);
+            //    option.ViewLocationFormats.Add("/Views1/Shared/{0}" + RazorViewEngine.ViewExtension);
+
+            //    option.AreaViewLocationFormats.Clear();
+            //    option.AreaViewLocationFormats.Add("/Areas/{2}/Views1/{1}/{0}" + RazorViewEngine.ViewExtension);
+            //    option.AreaViewLocationFormats.Add("/Areas/{2}/Views1/Shared/{0}" + RazorViewEngine.ViewExtension);
+            //    option.AreaViewLocationFormats.Add("/Views1/Shared/{0}" + RazorViewEngine.ViewExtension);
+            //})
                     .AddJsonFormatters()
                     .AddViewLocalization()
                     .AddDataAnnotationsLocalization();

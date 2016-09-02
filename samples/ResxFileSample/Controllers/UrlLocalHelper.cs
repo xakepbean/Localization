@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Routing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -166,7 +167,7 @@ namespace ResxFileSample.Controllers
                         url = pathData.VirtualPath;
                         return true;
                     }
-                    if (CultureFeature.RequestCulture.Culture.Name != CultureProvider.Options.DefaultRequestCulture.Culture.Name)
+                    if (CultureInfo.CurrentUICulture.Name != CultureProvider.Options.DefaultRequestCulture.Culture.Name)
                         url = "/" + CultureFeature.RequestCulture.Culture.Name + pathData.VirtualPath;
                     else
                         url = pathData.VirtualPath;

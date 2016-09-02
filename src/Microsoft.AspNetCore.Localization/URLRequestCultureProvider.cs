@@ -24,7 +24,7 @@ namespace Microsoft.AspNetCore.Localization
             var segments = request.Path.Value.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length > 0)
             {
-                var vcc = Options.SupportedCultures.Where(w => w.Name.Equals(segments[0], StringComparison.OrdinalIgnoreCase));
+                var vcc = Options.SupportedUICultures.Where(w => w.Name.Equals(segments[0], StringComparison.OrdinalIgnoreCase));
                 if (vcc.Count() > 0)
                 {
                     var UrlCulture = vcc.First();
